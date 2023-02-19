@@ -1,0 +1,574 @@
+Turbo Assembler	 Version 4.1	    02/19/23 15:14:54	    Page 1
+main.asm
+
+
+
+      1	0000			     .model tiny
+      2	0000			     .code
+      3
+      4				     org 100h
+      5
+      6	0100			     Start:
+      7	0100  1E			 push ds
+      8	0101  07			 pop es
+      9	0102  BE 001Dr			 lea si, s1
+     10	0105  BF 0028r			 lea di, s2
+     11	0108  E8 003B			 call StrCmp
+     12
+     13	010B  BB B800			 mov bx, 0b800h
+     14	010E  8E C3			 mov es, bx
+     15
+     16	0110  BB 0370			 mov bx, 160d*5	+ 80d
+     17	0113  B5 01			 mov ch, 1
+     18	0115  E8 0066			 call OutputNum10
+     19
+     20					 ;mov bx, 0b800h
+     21					 ;mov es, bx
+     22
+     23					 ;mov bx, 160d*5 + 80d
+     24					 ;mov ch, 1
+     25					 ;mov bp, 30
+     26					 ;lea si, s4
+     27					 ;call OutputStr
+     28	0118  C3			 ret
+     29
+     30
+     31				     include STRFUNC.ASM
+1    32	0119			     .code
+1    33				     locals __
+1    34
+1    35				     ;-------------------------------------
+1    36				     ;StrLen
+1    37				     ;	 count length of str excluding '\0'
+1    38				     ;------------------------------------
+1    39				     ;EXPECTS:	 None
+1    40				     ;INPUTS:	 es - segment in which string located
+1    41				     ;		 di - offset  start of string
+1    42				     ;
+1    43				     ;OUTPUT:	 ax - length of	string
+1    44				     ;
+1    45				     ;DESTROYS:	 df, si
+1    46				     ;-------------------------------------
+1    47	0119			     StrLen  proc
+1    48	0119  FC			 cld		 ;move forward along the string
+1    49	011A  B8 0000			 mov ax, 0d	 ;ax = '\0'
+1    50	011D  8B F7			 mov si, di	 ;save old value of di
+1    51
+1    52	011F  F2> AE			 repne scasb	 ;while(es:[di]	!= ax) di++;
+1    53	0121  8B C7			 mov ax, di
+1    54	0123  2B C6			 sub ax, si	 ;ax = di - si
+1    55	0125  48			 dec ax
+1    56
+1    57	0126  C3			 ret
+Turbo Assembler	 Version 4.1	    02/19/23 15:14:54	    Page 2
+main.asm
+
+
+
+1    58	0127				     endp
+1    59
+1    60				     ;-------------------------------------
+1    61				     ;MemCpy
+1    62				     ;-------------------------------------
+1    63				     ;EXPECTS:	 None
+1    64				     ;INPUTS:	 es - segment in which source located
+1    65				     ;		 si - offset of	source
+1    66				     ;		 ds - segment in which distination located
+1    67				     ;		 di - offset of	distination
+1    68				     ;		 cx - number of	bytes
+1    69				     ;
+1    70				     ;OUTPUTS:	 None
+1    71				     ;
+1    72				     ;DESTROYS:	 df, si, di
+1    73				     ;-------------------------------------
+1    74	0127			     MemCpy  proc
+1    75	0127  FC			 cld
+1    76	0128  F3> A4			 rep movsb
+1    77	012A  C3			 ret
+1    78	012B				     endp
+1    79
+1    80				     ;-------------------------------------
+1    81				     ;StrCpy
+1    82				     ;-------------------------------------
+1    83				     ;
+1    84				     ;INPUTS:	 es - segment in which source string located
+1    85				     ;		 si - offset of	source string
+1    86				     ;		 ds - segment in which distination string located
+1    87				     ;		 di - segment of distination string
+1    88				     ;Destroys:	 si, di, cx
+1    89				     ;-------------------------------------
+1    90	012B			     StrCpy  proc
+1    91	012B  33 C9			 xor cx, cx
+1    92	012D  FC			 cld
+1    93	012E				 __next:
+1    94	012E  A4			     movsb
+1    95	012F  8A 0C			     mov cl, ds:[si]
+1    96	0131  83 F9 00			     cmp cx, 0
+1    97	0134  75 F8			 jne __next
+1    98
+1    99	0136  C3			 ret
+1   100	0137				     endp
+1   101
+1   102
+1   103				     ;-------------------------------------
+1   104				     ;MemSet
+1   105				     ;-------------------------------------
+1   106				     ;EXPECTS:	 None
+1   107				     ;INPUTS:	 al - value to fill
+1   108				     ;		 cx - number bytes to fill
+1   109				     ;		 es - segment in which distination located
+1   110				     ;		 di - offset of	distination
+1   111				     ;OUTPUT:	 None
+1   112				     ;DESTROY:	 cx, di
+1   113				     ;
+1   114				     ;-------------------------------------
+Turbo Assembler	 Version 4.1	    02/19/23 15:14:54	    Page 3
+main.asm
+
+
+
+1   115	0137			     MemSet  proc
+1   116	0137  FC			 cld
+1   117	0138  F3> AA			 rep stosb
+1   118	013A  C3			 ret
+1   119	013B				     endp
+1   120
+1   121				     ;-------------------------------------
+1   122				     ;MemCmp
+1   123				     ;-------------------------------------
+1   124				     ;EXPECTS:	 None
+1   125				     ;INPUTS:	 cx - number bytes to compare
+1   126				     ;		 ds - segment in which 1-st object located
+1   127				     ;		 si - offset for 1-st segment
+1   128				     ;		 es - segment in which 2-st object located
+1   129				     ;		 di - offset for 2-st segment
+1   130				     ;OUTPUT:	 al:  <0 if the	first object is	less
+1   131				     ;		      0	if they	are the	same
+1   132				     ;		      >0 if the	first object is	bigger
+1   133				     ;DESTROY:	 cx, di, si
+1   134				     ;
+1   135				     ;-------------------------------------
+1   136	013B			     MemCmp  proc
+1   137	013B  FC			 cld
+1   138	013C  F3> A6			 repe cmpsb
+1   139
+1   140	013E  4E			 dec si		 ;
+1   141	013F  4F			 dec di		 ;put pointers to first	not equal byte
+1   142
+1   143	0140  8A 04			 mov al, ds:[si]
+1   144	0142  26: 2A 05			 sub al, es:[di] ;return *si - *di
+1   145	0145  C3			 ret
+1   146	0146				     endp
+1   147
+1   148				     ;-------------------------------------
+1   149				     ;StrCmp
+1   150				     ;-------------------------------------
+1   151				     ;EXPECTS:	 None
+1   152				     ;INPUTS:	 ds - segment in which 1-st string located
+1   153				     ;		 si - offset for 1-st segment
+1   154				     ;		 es - segment in which 2-st string located
+1   155				     ;		 di - offset for 2-st segment
+1   156				     ;OUTPUT:	 al:  <0 if the	first object is	less
+1   157				     ;		      0	if they	are the	same
+1   158				     ;		      >0 if the	first object is	bigger
+1   159				     ;DESTROY:	 cx, di, si
+1   160				     ;
+1   161				     ;-------------------------------------
+1   162	0146			     StrCmp	 proc
+1   163	0146  FC			 cld
+1   164
+1   165	0147				 __Next:
+1   166	0147  8A 04			     mov al, ds:[si]
+1   167	0149  3C 00			     cmp al, 0
+1   168	014B  74 05			     je	__break
+1   169
+1   170	014D  A6			     cmpsb
+1   171	014E  75 02			     jne __break
+Turbo Assembler	 Version 4.1	    02/19/23 15:14:54	    Page 4
+main.asm
+
+
+
+1   172	0150  EB F5			     jmp __Next
+1   173
+1   174	0152			     __break:
+1   175	0152  4E			 dec si		 ;
+1   176	0153  4F			 dec di		 ;put pointers to first	not equal byte
+1   177
+1   178	0154  8A 04			 mov al, ds:[si]
+1   179	0156  26: 2A 05			 sub al, es:[di] ;return *si - *di
+1   180	0159  C3			 ret
+1   181	015A					 endp
+    182				     include SMALLIB.ASM
+1   183	015A			     .code
+1   184				     locals __
+1   185
+1   186				     ;-------------------------------------------
+1   187				     ;Get number from cmd
+1   188				     ;
+1   189				     ;Expects:	     label named buffer
+1   190				     ;
+1   191				     ;Entry:	     None
+1   192				     ;
+1   193				     ;Output:	     ax	- number
+1   194				     ;
+1   195				     ;Destroys:	     cx, dx, ax, di
+1   196				     ;
+1   197				     ;-------------------------------------------
+1   198	015A			     GetNum  proc
+1   199
+1   200	015A  BA 0010r			     lea dx, buffer
+1   201	015D  B4 0A			     mov ah, 0ah
+1   202	015F  CD 21			     int 21h		     ;get number from cml
+1   203
+1   204	0161  33 C9			     xor cx, cx
+1   205	0163  8A 0E 0011r		     mov cl, buffer[1]	     ;get length of number
+1   206
+1   207	0167  33 C0			     xor ax, ax
+1   208	0169  BF 000A			     mov di, 10d
+1   209	016C  BE 0002			     mov si, 2h
+1   210
+1   211	016F				     __Next:
+1   212	016F  F7 E7				     mul di			     ;ax = ax*10
+1   213	0171  8A 94 0010r			     mov dl, si	+ buffer     ;put in dl	next simbol
+1   214	0175  80 EA 30				     sub dl, '0'		     ;convert simbol to	number
+1   215
+1   216	0178  03 C2				     add ax, dx		     ;ax += dh
+1   217
+1   218	017A  46				     inc si
+1   219	017B  E2 F2				     loop __Next
+1   220	017D  C3			     ret
+1   221	017E				     endp
+1   222
+1   223				     ;-------------------------------------------
+1   224
+1   225				     ;-------------------------------------------
+1   226				     ;Put number in dec	form in	videomem
+1   227				     ;
+1   228				     ;Expects:	     es->Videomem
+Turbo Assembler	 Version 4.1	    02/19/23 15:14:54	    Page 5
+main.asm
+
+
+
+1   229				     ;
+1   230				     ;Entry:	     bx	- offset in videomem
+1   231				     ;			     ax	- number for output
+1   232				     ;			     ch	- color	atr for	output
+1   233				     ;
+1   234				     ;Output:	     None
+1   235				     ;
+1   236				     ;Destroys:	     ax, dx, bx, di, si
+1   237				     ;
+1   238				     ;-------------------------------------------
+1   239	017E			     OutputNum10     proc
+1   240	017E  BE 0005			     mov si, 5			     ;max length of number
+1   241	0181  BF 000A			     mov di, 10d
+1   242
+1   243	0184				     __next:
+1   244	0184  33 D2				     xor dx, dx			     ;dx = 0
+1   245	0186  F7 F7				     div di			     ;ax = dxax/10
+1   246											     ;dx = ax%10
+1   247
+1   248	0188  80 C2 30				     add dl, '0'		     ;make symbol from num
+1   249	018B  8A F5				     mov dh, ch			     ;set color
+1   250
+1   251	018D  26: 89 57	FE			     mov word ptr es:[bx-2], dx	     ;put symbol in vmem
+1   252	0191  83 EB 02				     sub bx, 2
+1   253
+1   254	0194  4E				     dec si
+1   255	0195  83 FE 00				     cmp si, 0
+1   256	0198  75 EA				     jne __next				     ;for(int si = 5; si != 0; si--)
+1   257	019A  C3			     ret
+1   258	019B				     endp
+1   259
+1   260				     ;----------------------------------------------
+1   261				     ;Put number in hex	form in	videomem
+1   262				     ;
+1   263				     ;Expects:	     es->VideoMem
+1   264				     ;
+1   265				     ;Entry:	     bx	- offset in videomem
+1   266				     ;			     ax	- number to output
+1   267				     ;			     dh	- color	atr to output
+1   268				     ;
+1   269				     ;Output:	     None
+1   270				     ;
+1   271				     ;Destroys:	     ax, dx, bx, cx, si
+1   272				     ;
+1   273				     ;----------------------------------------------
+1   274	019B			     OutputNum16     proc
+1   275	019B  B9 0004			     mov cx, 4				     ;length of	hex number
+1   276	019E				     __Next:				     ;do
+1   277	019E  BE 000F				     mov si, 000fh
+1   278	01A1  23 F0				     and si, ax					     ;get new number
+1   279
+1   280	01A3  8A 94 0000r			     mov dl, int_to_char_hex[si] ;make char from int
+1   281
+1   282	01A7  26: 89 57	FE			     mov word ptr es:[bx-2], dx	     ;put symb in vmem
+1   283	01AB  83 EB 02				     sub bx, 2					     ;bx -= 2
+1   284
+1   285	01AE  D1 C8 D1 C8 D1 C8	D1+		     ror ax, 4
+Turbo Assembler	 Version 4.1	    02/19/23 15:14:54	    Page 6
+main.asm
+
+
+
+    286	      C8
+1   287	01B6  E2 E6				     loop __Next
+1   288
+1   289	01B8  C3			     ret
+1   290	01B9				     endp
+1   291
+1   292	01B9			     .data
+1   293	0000  30 31 32 33 34 35	36+	     int_to_char_hex db	"0123456789ABCDEF"
+    294	      37 38 39 41 42 43	44+
+    295	      45 46
+1   296
+1   297	0010			     .code
+1   298				     ;----------------------------------------------
+1   299
+1   300				     ;----------------------------------------------
+1   301				     ;Put number in binary form	in videomem
+1   302				     ;
+1   303				     ;Expects:	     es->VideoMem
+1   304				     ;
+1   305				     ;Entry:	     bx	- offset in videomem
+1   306				     ;		     ax	- number to output
+1   307				     ;		     dh	- color	atr to output
+1   308				     ;
+1   309				     ;Output:	     None
+1   310				     ;
+1   311				     ;Destroys:	     ax, bx,cx,	dl
+1   312				     ;----------------------------------------------
+1   313	01B9			     OutputNum2	     proc
+1   314
+1   315	01B9  B9 0010			     mov cx, 10h	     ;set number of bits in number
+1   316
+1   317	01BC				     __Next:
+1   318	01BC  B2 01				     mov dl, 1
+1   319	01BE  22 D0				     and dl, al			     ;get last number
+1   320	01C0  80 C2 30				     add dl, '0'		     ;make char	from number
+1   321
+1   322	01C3  D1 C8				     ror ax, 1
+1   323	01C5  26: 89 17				     mov word ptr es:[bx], dx	     ;print 1 or 0
+1   324
+1   325	01C8  83 C3 02				     add bx, 2
+1   326	01CB  E2 EF				     loop __Next
+1   327
+1   328	01CD  C3			     ret
+1   329	01CE				     endp
+1   330				     ;----------------------------------------------
+1   331
+1   332	01CE			     .data
+1   333	0010  05 ?? 05*(20)		     buffer db 5, ?, 5 dup(' ')
+1   334
+1   335	0017			     .code
+1   336
+1   337				     ;------------------------------------------
+1   338				     ;DrawFrame
+1   339				     ;------------------------------------------
+1   340				     ;Expects: es->videomemory
+1   341				     ;
+1   342				     ;Entry: bx	- offset in vmem
+Turbo Assembler	 Version 4.1	    02/19/23 15:14:54	    Page 7
+main.asm
+
+
+
+1   343				     ;		     ch	- height of frame
+1   344				     ;		     cl	- weight of fram
+1   345				     ;		     dh	- color	atr
+1   346				     ;
+1   347				     ;Output: None
+1   348				     ;
+1   349				     ;Destroys:	bx, ax,	dx,
+1   350				     ;------------------------------------------
+1   351
+1   352	01CE			     DrawFrame	     proc
+1   353
+1   354	01CE  32 E4			     xor ah, ah	     ;y	offset
+1   355	01D0  32 C0			     xor al, al	     ;x	offset
+1   356
+1   357	01D2  8A 16 0017r		     mov dl, frame		;left upper corner
+1   358	01D6  26: 89 17			     mov word ptr es:[bx], dx
+1   359	01D9  83 C3 02			     add bx, 2
+1   360
+1   361	01DC  8A 16 001Br		     mov dl, frame[4]	     ;horisontal border
+1   362
+1   363	01E0				     next_top:				     ;draw top
+1   364	01E0  26: 89 17				     mov word ptr es:[bx], dx
+1   365
+1   366	01E3  FE C0				     inc al
+1   367	01E5  83 C3 02				     add bx, 2
+1   368	01E8  3A C1				     cmp al, cl
+1   369	01EA  7C F4				     jl	next_top
+1   370
+1   371	01EC  8A 16 0018r		     mov dl, frame[1]		     ;right top	corner
+1   372	01F0  26: 89 17			     mov word ptr es:[bx], dx
+1   373
+1   374	01F3  81 C3 00A0		     add bx, 160d		     ;new line
+1   375	01F7  8A 16 001Cr		     mov dl, frame[5]		     ;vertical border
+1   376
+1   377	01FB				     next_right:		     ;draw right
+1   378	01FB  26: 89 17				     mov word ptr es:[bx], dx
+1   379
+1   380	01FE  FE C4				     inc ah
+1   381	0200  81 C3 00A0			     add bx, 160d
+1   382	0204  3A E5				     cmp ah, ch
+1   383	0206  7C F3				     jl	next_right
+1   384
+1   385	0208  8A 16 001Ar		     mov dl, frame[3]		     ;right bottom corner
+1   386	020C  26: 89 17			     mov word ptr es:[bx], dx
+1   387	020F  83 EB 02			     sub bx, 2d
+1   388
+1   389	0212  8A 16 001Br		     mov dl, frame[4]
+1   390
+1   391	0216				     next_bottom:		     ;draw bottom
+1   392	0216  26: 89 17				     mov word ptr es:[bx], dx
+1   393
+1   394	0219  FE C8				     dec al
+1   395	021B  83 EB 02				     sub bx, 2d
+1   396	021E  3C 00				     cmp al, 0
+1   397	0220  77 F4				     ja	next_bottom
+1   398
+1   399	0222  8A 16 0019r		     mov dl, frame[2]		     ;left bottom corner
+Turbo Assembler	 Version 4.1	    02/19/23 15:14:54	    Page 8
+main.asm
+
+
+
+1   400	0226  26: 89 17			     mov word ptr es:[bx], dx
+1   401	0229  81 EB 00A0		     sub bx, 160d
+1   402
+1   403	022D  8A 16 001Cr		     mov dl, frame[5]		     ;vertical border
+1   404
+1   405	0231				     next_left:				     ;draw left
+1   406	0231  26: 89 17				     mov word ptr es:[bx], dx
+1   407
+1   408	0234  FE CC				     dec ah
+1   409	0236  81 EB 00A0			     sub bx, 160d
+1   410	023A  80 FC 00				     cmp ah, 0
+1   411	023D  77 F2				     ja	next_left
+1   412
+1   413	023F  C3			     ret
+1   414	0240				     endp
+1   415
+1   416	0240			     .data
+1   417	0017  C9 BB C8 BC CD BA	     frame db 0c9h, 0bbh, 0c8h,	0bch, 0cdh, 0bah
+1   418				     ;	      _	     _	    |_	  _|   =   ||
+1   419				     ;	     |	      |
+1   420
+1   421	001D			     .code
+1   422
+1   423				     ;------------------------------------------------
+1   424				     ;Put text form var	in vmem
+1   425				     ;
+1   426				     ;Expects: es->videomem
+1   427				     ;
+1   428				     ;Inputs: bx - offset
+1   429				     ;		      ch - color atribut
+1   430				     ;		      si - pointer to variable with text
+1   431				     ;		      bp - length of string in var
+1   432				     ;
+1   433				     ;Output: None
+1   434				     ;
+1   435				     ;Destroys:	si, bx,	bp, cl
+1   436				     ;------------------------------------------------
+1   437
+1   438	0240			     OutputStr	     proc
+1   439
+1   440	0240  03 EE			     add bp, si
+1   441	0242				     __next:									     ;
+1   442	0242  8A 0C				     mov cl, [si]						     ;
+1   443	0244  26: 89 0F				     mov word ptr es:[bx], cx				     ;
+1   444	0247  83 C3 02				     add bx, 2								     ;
+1   445	024A  46				     inc si								     ;
+1   446
+1   447	024B  3B F5				     cmp si, bp							     ;
+1   448	024D  75 F3				     jne __next								     ;
+1   449
+1   450	024F  C3			     ret
+1   451	0250				     endp
+1   452				     ;------------------------------------------------
+1   453
+    454
+    455	0250			     .data
+    456	001D  30 31 32 33 36 35	36+	 s1 db '0123656789', 0		     ;length = 10
+Turbo Assembler	 Version 4.1	    02/19/23 15:14:54	    Page 9
+main.asm
+
+
+
+    457	      37 38 39 00
+    458	0028  30 31 32 33 34 35	36+	 s2 db '0123456789', 0		     ;length = 10
+    459	      37 38 39 00
+    460	0033  34 32 31 35 64 67	61+	 s3 db '4215dgajjg33tkaGOFdpsafd', 0 ;length = 24
+    461	      6A 6A 67 33 33 74	6B+
+    462	      61 47 4F 46 64 70	73+
+    463	      61 66 64 00
+    464	004C  1E*(00)			 s4 db 30 dup(0)
+    465
+    466				     end Start
+Turbo Assembler	 Version 4.1	    02/19/23 15:14:54	    Page 10
+Symbol Table
+
+
+
+
+Symbol Name			  Type	 Value
+
+??DATE				  Text	 "02/19/23"
+??FILENAME			  Text	 "main	  "
+??TIME				  Text	 "15:14:53"
+??VERSION			  Number 040A
+@32BIT				  Text	 0
+@CODE				  Text	 DGROUP
+@CODESIZE			  Text	 0
+@CPU				  Text	 0101H
+@CURSEG				  Text	 _DATA
+@DATA				  Text	 DGROUP
+@DATASIZE			  Text	 0
+@FILENAME			  Text	 MAIN
+@INTERFACE			  Text	 000H
+@MODEL				  Text	 1
+@STACK				  Text	 DGROUP
+@WORDSIZE			  Text	 2
+BUFFER				  Byte	 DGROUP:0010
+DRAWFRAME			  Near	 DGROUP:01CE
+FRAME				  Byte	 DGROUP:0017
+GETNUM				  Near	 DGROUP:015A
+INT_TO_CHAR_HEX			  Byte	 DGROUP:0000
+MEMCMP				  Near	 DGROUP:013B
+MEMCPY				  Near	 DGROUP:0127
+MEMSET				  Near	 DGROUP:0137
+NEXT_BOTTOM			  Near	 DGROUP:0216
+NEXT_LEFT			  Near	 DGROUP:0231
+NEXT_RIGHT			  Near	 DGROUP:01FB
+NEXT_TOP			  Near	 DGROUP:01E0
+OUTPUTNUM10			  Near	 DGROUP:017E
+OUTPUTNUM16			  Near	 DGROUP:019B
+OUTPUTNUM2			  Near	 DGROUP:01B9
+OUTPUTSTR			  Near	 DGROUP:0240
+S1				  Byte	 DGROUP:001D
+S2				  Byte	 DGROUP:0028
+S3				  Byte	 DGROUP:0033
+S4				  Byte	 DGROUP:004C
+START				  Near	 DGROUP:0100
+STRCMP				  Near	 DGROUP:0146
+STRCPY				  Near	 DGROUP:012B
+STRLEN				  Near	 DGROUP:0119
+__BREAK				  Near	 DGROUP:0152
+__NEXT				  Near	 DGROUP:012E
+__NEXT				  Near	 DGROUP:0147
+__NEXT				  Near	 DGROUP:016F
+__NEXT				  Near	 DGROUP:0184
+__NEXT				  Near	 DGROUP:019E
+__NEXT				  Near	 DGROUP:01BC
+__NEXT				  Near	 DGROUP:0242
+
+Groups & Segments		  Bit Size Align  Combine Class
+
+DGROUP				  Group
+  _DATA				  16  006A Word	  Public  DATA
+  _TEXT				  16  0250 Word	  Public  CODE
+
